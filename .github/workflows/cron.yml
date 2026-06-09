@@ -3,7 +3,7 @@ name: Birthday Reminder Bot
 on:
   schedule:
     # Запуск щодня о 06:00 за UTC (це 09:00 за київським часом)
-    - cron: '10 11 * * *'
+    - cron: '*/5 * * * *'
   # Дозволяє запустити скрипт вручну з сайту GitHub (для тестів)
   workflow_dispatch:
 

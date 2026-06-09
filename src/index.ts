@@ -1,28 +1,20 @@
 import TelegramBot from 'node-telegram-bot-api';
-import cron from 'node-cron';
 import dotenv from 'dotenv';
 
-// Завантажуємо змінні з .env
 dotenv.config();
 
 const token = process.env.TELEGRAM_TOKEN;
 const myChatId = process.env.MY_CHAT_ID;
 
 if (!token || !myChatId) {
-	console.error("❌ Помилка: не вказано TELEGRAM_TOKEN або MY_CHAT_ID у файлі .env");
+	console.error("❌ Відсутні токен або ID чату!");
 	process.exit(1);
 }
 
-const bot = new TelegramBot(token, { polling: true });
+// Polling вимкнено, бот лише відправляє повідомлення
+const bot = new TelegramBot(token);
 
-// Створюємо інтерфейс, щоб TS знав, як виглядає наш об'єкт
-interface BirthdayUser {
-	name: string;
-	date: string; // Формат "MM-DD", наприклад "06-16"
-}
-
-// Наша тимчасова база даних
-const birthdays: BirthdayUser[] = [
+const birthdays = [
 	{ name: "Сясік", date: "12-13" },
 	{ name: "Стас", date: "03-01" },
 	{ name: "Антон", date: "07-14" },
@@ -42,32 +34,34 @@ const birthdays: BirthdayUser[] = [
 	{ name: "Тест", date: "06-09" },
 ];
 
-function checkBirthdays(): void {
+async function checkBirthdays() {
 	const today = new Date();
-
-	// Дата сьогодні у форматі ММ-ДД
 	const todayStr = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-	// Дата за 7 днів у форматі ММ-ДД
 	const inWeek = new Date();
 	inWeek.setDate(today.getDate() + 7);
 	const inWeekStr = `${String(inWeek.getMonth() + 1).padStart(2, '0')}-${String(inWeek.getDate()).padStart(2, '0')}`;
 
-	birthdays.forEach((person) => {
+	let sentSomething = false;
+
+	for (const person of birthdays) {
 		if (person.date === todayStr) {
-			bot.sendMessage(myChatId!, `🎉 СЬОГОДНІ День народження у: *${person.name}*! Не забудь привітати! 🎂`, { parse_mode: 'Markdown' });
+			await bot.sendMessage(myChatId!, `🎉 СЬОГОДНІ День народження у: *${person.name}*! Не забудь привітати! 🎂`, { parse_mode: 'Markdown' });
+			sentSomething = true;
 		} else if (person.date === inWeekStr) {
-			bot.sendMessage(myChatId!, `🔔 Нагадування: Рівно за тиждень (🎂) День народження у: *${person.name}*. Час шукати подарунок! 🎁`, { parse_mode: 'Markdown' });
+			await bot.sendMessage(myChatId!, `🔔 Нагадування: Рівно за тиждень (🎂) День народження у: *${person.name}*. Час шукати подарунок! 🎁`, { parse_mode: 'Markdown' });
+			sentSomething = true;
 		}
-	});
+	}
+
+	if (!sentSomething) {
+		console.log("Сьогодні та за тиждень днів народжень немає.");
+	}
+
+	console.log("✅ Скрипт успішно завершив роботу.");
+	// Обов'язково завершуємо процес, щоб GitHub Action не завис
+	process.exit(0);
 }
 
-// Запускаємо щодня о 09:00
-cron.schedule('40 12 * * *', () => {
-	console.log('🔄 Запуск щоденної перевірки...');
-	checkBirthdays();
-}, {
-	timezone: "Europe/Kyiv"
-});
-
-console.log("🤖 Бот на TypeScript успішно запущений і чекає на роботу!");
+// Просто викликаємо функцію
+checkBirthdays();

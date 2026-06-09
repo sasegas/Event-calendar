@@ -63,12 +63,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 		console.log("✅ Скрипт успішно завершив роботу.");
 
-		// 3. Замість process.exit(0) повертаємо успішну відповідь серверу
-		return res.status(200).json({ success: true, message: "Checked successfully" });
+		res.statusCode = 200;
+		res.setHeader('Content-Type', 'application/json');
+		return res.end(JSON.stringify({ success: true, message: "Checked successfully" }));
 
 	} catch (error) {
-		// Якщо щось пішло не так (наприклад, Телеграм відхилив запит)
 		console.error("❌ Помилка під час виконання:", error);
-		return res.status(500).json({ success: false, error: "Internal Server Error" });
+
+		res.statusCode = 500;
+		res.setHeader('Content-Type', 'application/json');
+		return res.end(JSON.stringify({ success: false, error: "Internal Server Error" }));
 	}
 }

@@ -63,7 +63,7 @@ function checkBirthdays(): void {
 }
 
 // Запускаємо щодня о 09:00
-cron.schedule('0 9 * * *', () => {
+cron.schedule('30 12 * * *', () => {
 	console.log('🔄 Запуск щоденної перевірки...');
 	checkBirthdays();
 }, {

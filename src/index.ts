@@ -1,9 +1,22 @@
 import TelegramBot from 'node-telegram-bot-api';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
+import express from 'express';
 
 // Завантажуємо змінні з .env
 dotenv.config();
+
+// --- Міні веб-сервер для Render ---
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+	res.send('Бот працює! 🤖');
+});
+
+app.listen(port, () => {
+	console.log(`🌐 Веб-сервер запущено на порту ${port} (щоб Render був щасливий)`);
+});
 
 const token = process.env.TELEGRAM_TOKEN;
 const myChatId = process.env.MY_CHAT_ID;
@@ -63,7 +76,7 @@ function checkBirthdays(): void {
 }
 
 // Запускаємо щодня о 09:00
-cron.schedule('30 12 * * *', () => {
+cron.schedule('40 12 * * *', () => {
 	console.log('🔄 Запуск щоденної перевірки...');
 	checkBirthdays();
 }, {

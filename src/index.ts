@@ -33,7 +33,7 @@ const birthdays = [
 	{ name: "Мама", date: "01-25" },
 	{ name: "Тест", date: "06-09" },
 ];
-
+//test
 async function checkBirthdays() {
 	const today = new Date();
 	const todayStr = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;

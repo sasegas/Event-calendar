@@ -1,11 +1,9 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Vercel автоматично бере ці змінні з налаштувань (Environment Variables)
 const token = process.env.TELEGRAM_TOKEN;
 const myChatId = process.env.MY_CHAT_ID;
 
-// Ваші дані
 const birthdays = [
 	{ name: "Сясік", date: "12-13" },
 	{ name: "Стас", date: "03-01" },
@@ -23,18 +21,17 @@ const birthdays = [
 	{ name: "Єгор(Сновськ)", date: "03-14" },
 	{ name: "Яся", date: "07-12" },
 	{ name: "Мама", date: "01-25" },
-	{ name: "Тест", date: "06-10" },
+	{ name: "Тест", date: "06-11" },
 ];
-// Головна функція, яку викликатиме Vercel за розкладом
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-	// 1. Перевірка змінних
 	if (!token || !myChatId) {
 		console.error("❌ Відсутні токен або ID чату!");
 		return res.status(500).json({ error: "Missing environment variables" });
 	}
 
-	// Ініціалізація бота (без polling, як і було)
-	const bot = new TelegramBot(token);
+	// Ініціалізуємо бота всередині хандлера з вимкненим polling
+	const bot = new TelegramBot(token, { polling: false });
 
 	try {
 		const today = new Date();
@@ -44,34 +41,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 		inWeek.setDate(today.getDate() + 7);
 		const inWeekStr = `${String(inWeek.getMonth() + 1).padStart(2, '0')}-${String(inWeek.getDate()).padStart(2, '0')}`;
 
-		let sentSomething = false;
+		// Масив для збору промісів відправки (щоб відправляти паралельно і швидко)
+		const messagePromises = [];
 
-		// 2. Перевірка дат та відправка
 		for (const person of birthdays) {
 			if (person.date === todayStr) {
-				await bot.sendMessage(myChatId, `🎉 СЬОГОДНІ День народження у: *${person.name}*! Не забудь привітати! 🎂`, { parse_mode: 'Markdown' });
-				sentSomething = true;
+				const p = bot.sendMessage(myChatId, `🎉 СЬОГОДНІ День народження у: *${person.name}*! Не забудь привітати! 🎂`, { parse_mode: 'Markdown' });
+				messagePromises.push(p);
 			} else if (person.date === inWeekStr) {
-				await bot.sendMessage(myChatId, `🔔 Нагадування: Рівно за тиждень (🎂) День народження у: *${person.name}*. Час шукати подарунок! 🎁`, { parse_mode: 'Markdown' });
-				sentSomething = true;
+				const p = bot.sendMessage(myChatId, `🔔 Нагадування: Рівно за тиждень (🎂) День народження у: *${person.name}*. Час шукати подарунок! 🎁`, { parse_mode: 'Markdown' });
+				messagePromises.push(p);
 			}
 		}
 
-		if (!sentSomething) {
+		if (messagePromises.length > 0) {
+			// Чекаємо виконання всіх відправок одночасно
+			await Promise.all(messagePromises);
+			console.log(`✅ Успішно надіслано повідомлень: ${messagePromises.length}`);
+		} else {
 			console.log("Сьогодні та за тиждень днів народжень немає.");
 		}
 
-		console.log("✅ Скрипт успішно завершив роботу.");
-
-		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		return res.end(JSON.stringify({ success: true, message: "Checked successfully" }));
+		// Чітке і швидке завершення запиту за стандартами Vercel
+		return res.status(200).json({ success: true, message: "Checked successfully" });
 
 	} catch (error) {
 		console.error("❌ Помилка під час виконання:", error);
-
-		res.statusCode = 500;
-		res.setHeader('Content-Type', 'application/json');
-		return res.end(JSON.stringify({ success: false, error: "Internal Server Error" }));
+		// Повертаємо 500, але у правильному форматі Vercel
+		return res.status(500).json({ success: false, error: "Internal Server Error" });
 	}
 }

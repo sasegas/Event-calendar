@@ -40,6 +40,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 		return res.end();
 	}
 
+	if (req.url !== '/api/cron' && req.url !== '/') {
+		res.statusCode = 404;
+		return res.end(JSON.stringify({ error: "Not found" }));
+	}
+
 	// Ініціалізуємо бота всередині хандлера з вимкненим polling
 	const bot = new TelegramBot(token, { polling: false });
 

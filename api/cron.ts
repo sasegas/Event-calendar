@@ -46,7 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 		for (const person of birthdays) {
 			if (person.date === todayStr) {
-				const p = bot.sendMessage(myChatId, `🎉 СЬОГОДНІ День народження у: *${person.name}*! Не забудь привітати! 🎂`, { parse_mode: 'Markdown' });
+				// Заміни рядок надсилання для СЬОГОДНІ на цей:
+				const p = bot.sendMessage(myChatId, `🎉 СЬОГОДНІ День народження у: *${person.name}*! Не забудь привітати! 🎂\n\n_(Виклик з URL: ${req.url})_`, { parse_mode: 'Markdown' });
 				messagePromises.push(p);
 			} else if (person.date === inWeekStr) {
 				const p = bot.sendMessage(myChatId, `🔔 Нагадування: Рівно за тиждень (🎂) День народження у: *${person.name}*. Час шукати подарунок! 🎁`, { parse_mode: 'Markdown' });

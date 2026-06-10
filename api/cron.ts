@@ -62,8 +62,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 			console.log("Сьогодні та за тиждень днів народжень немає.");
 		}
 
-		// Чітке і швидке завершення запиту за стандартами Vercel
-		return res.status(200).json({ success: true, message: "Checked successfully" });
+		res.statusCode = 200;
+		res.setHeader('Content-Type', 'application/json');
+		return res.end(JSON.stringify({ success: true, message: "Checked successfully" }));
 
 	} catch (error) {
 		console.error("❌ Помилка під час виконання:", error);

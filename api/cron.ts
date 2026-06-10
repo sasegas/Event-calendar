@@ -40,9 +40,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 		return res.end();
 	}
 
-	if (req.url !== '/api/cron' && req.url !== '/') {
-		res.statusCode = 404;
-		return res.end(JSON.stringify({ error: "Not found" }));
+	if (req.url !== '/api/cron') {
+		res.statusCode = 200; // або 404, але краще 200 з порожньою відповіддю для головної сторінки
+		res.setHeader('Content-Type', 'application/json');
+		return res.end(JSON.stringify({ message: "Welcome. For cron jobs use /api/cron" }));
 	}
 
 	// Ініціалізуємо бота всередині хандлера з вимкненим polling

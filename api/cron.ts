@@ -25,9 +25,19 @@ const birthdays = [
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+	// 1. Перевірка змінних
 	if (!token || !myChatId) {
 		console.error("❌ Відсутні токен або ID чату!");
-		return res.status(500).json({ error: "Missing environment variables" });
+		res.statusCode = 500;
+		res.setHeader('Content-Type', 'application/json');
+		return res.end(JSON.stringify({ error: "Missing environment variables" }));
+	}
+
+	// 💡 ЗАХИСТ ВІД ІКОНОК ТА СМІТТЄВИХ ЗАПИТІВ
+	// Якщо браузер просить іконку — одразу віддаємо 204 (No Content) і виходимо
+	if (req.url?.includes('favicon') || req.url === '/robots.txt') {
+		res.statusCode = 204;
+		return res.end();
 	}
 
 	// Ініціалізуємо бота всередині хандлера з вимкненим polling

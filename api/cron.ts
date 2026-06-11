@@ -21,7 +21,7 @@ const birthdays = [
 	{ name: "Єгор(Сновськ)", date: "03-14" },
 	{ name: "Яся", date: "07-12" },
 	{ name: "Мама", date: "01-25" },
-	{ name: "Тест", date: "06-11" },
+	{ name: "Тест", date: "06-12" },
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

@@ -25,67 +25,94 @@ const birthdays = [
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-	// 1. Перевірка змінних
+	// Гарантуємо, що Vercel віддасть JSON-заголовки від початку
+	res.setHeader('Content-Type', 'application/json');
+
 	if (!token || !myChatId) {
 		console.error("❌ Відсутні токен або ID чату!");
 		res.statusCode = 500;
-		res.setHeader('Content-Type', 'application/json');
 		return res.end(JSON.stringify({ error: "Missing environment variables" }));
 	}
 
-	// 💡 ЗАХИСТ ВІД ІКОНОК ТА СМІТТЄВИХ ЗАПИТІВ
-	// Якщо браузер просить іконку — одразу віддаємо 204 (No Content) і виходимо
+	// Захист від сміттєвих запитів браузера
 	if (req.url?.includes('favicon') || req.url === '/robots.txt') {
 		res.statusCode = 204;
 		return res.end();
 	}
 
 	if (req.url !== '/api/cron') {
-		res.statusCode = 200; // або 404, але краще 200 з порожньою відповіддю для головної сторінки
-		res.setHeader('Content-Type', 'application/json');
-		return res.end(JSON.stringify({ message: "Welcome. For cron jobs use /api/cron" }));
+		res.statusCode = 200;
+		return res.end(JSON.stringify({ message: "Welcome. Use /api/cron for updates." }));
 	}
 
-	// Ініціалізуємо бота всередині хандлера з вимкненим polling
 	const bot = new TelegramBot(token, { polling: false });
 
 	try {
-		const today = new Date();
-		const todayStr = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+		// Явно виставляємо часову зону України, щоб уникнути багів з UTC на серверах Vercel
+		const targetTimeZone = "Europe/Kyiv";
+		const formatter = new Intl.DateTimeFormat("en-US", {
+			timeZone: targetTimeZone,
+			month: "2-digit",
+			day: "2-digit",
+		});
 
-		const inWeek = new Date();
-		inWeek.setDate(today.getDate() + 7);
-		const inWeekStr = `${String(inWeek.getMonth() + 1).padStart(2, '0')}-${String(inWeek.getDate()).padStart(2, '0')}`;
+		const getMonthDayStr = (date: Date): string => {
+			const parts = formatter.formatToParts(date);
+			const month = parts.find(p => p.type === 'month')?.value || '01';
+			const day = parts.find(p => p.type === 'day')?.value || '01';
+			return `${month}-${day}`;
+		};
 
-		// Масив для збору промісів відправки (щоб відправляти паралельно і швидко)
+		// Отримуємо поточну дату
+		const todayStr = getMonthDayStr(new Date());
+
+		// Розрахунок дати через 7 днів
+		const inWeekDate = new Date();
+		inWeekDate.setDate(inWeekDate.getDate() + 7);
+		const inWeekStr = getMonthDayStr(inWeekDate)
+
+		console.log(`[Cron Run] Сортування дат для часового поясу Kyiv. Сьогодні: ${todayStr}, За тиждень: ${inWeekStr}`);
+
 		const messagePromises = [];
+		const processedToday = new Set<string>();
+		const processedInWeek = new Set<string>();
 
 		for (const person of birthdays) {
-			if (person.date === todayStr) {
-				// Заміни рядок надсилання для СЬОГОДНІ на цей:
+			if (person.date === todayStr && !processedToday.has(person.name)) {
+				processedToday.add(person.name);
 				const p = bot.sendMessage(myChatId, `🎉 СЬОГОДНІ День народження у: *${person.name}*! Не забудь привітати! 🎂`, { parse_mode: 'Markdown' });
 				messagePromises.push(p);
-			} else if (person.date === inWeekStr) {
+			}
+
+			if (person.date === inWeekStr && !processedInWeek.has(person.name)) {
+				processedInWeek.add(person.name);
 				const p = bot.sendMessage(myChatId, `🔔 Нагадування: Рівно за тиждень (🎂) День народження у: *${person.name}*. Час шукати подарунок! 🎁`, { parse_mode: 'Markdown' });
 				messagePromises.push(p);
 			}
 		}
 
 		if (messagePromises.length > 0) {
-			// Чекаємо виконання всіх відправок одночасно
+			// Чекаємо повного виконання запитів до Telegram API
 			await Promise.all(messagePromises);
-			console.log(`✅ Успішно надіслано повідомлень: ${messagePromises.length}`);
+			console.log(`✅ Надіслано повідомлень: ${messagePromises.length}`);
 		} else {
 			console.log("Сьогодні та за тиждень днів народжень немає.");
 		}
 
+		// Повертаємо успішний статус
 		res.statusCode = 200;
-		res.setHeader('Content-Type', 'application/json');
-		return res.end(JSON.stringify({ success: true, message: "Checked successfully" }));
+		res.end(JSON.stringify({ success: true, cron_executed: true }));
+
+		// Фінальний штрих для серверлес: очищення внутрішнього стану бота
+		// (іноді пакети тримають HTTP-з'єднання відкритими "keep-alive", через що Vercel думає, що функція ще працює)
+		if ((bot as any)._requestReg) {
+			(bot as any)._requestReg = null;
+		}
+		return;
 
 	} catch (error) {
-		console.error("❌ Помилка під час виконання:", error);
-		// Повертаємо 500, але у правильному форматі Vercel
-		return res.status(500).json({ success: false, error: "Internal Server Error" });
+		console.error("❌ Помилка під час виконання Cron:", error);
+		res.statusCode = 500;
+		return res.end(JSON.stringify({ success: false, error: "Internal Server Error" }));
 	}
 }

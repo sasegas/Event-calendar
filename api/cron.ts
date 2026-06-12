@@ -21,7 +21,7 @@ const birthdays = [
 	{ name: "Єгор(Сновськ)", date: "03-14" },
 	{ name: "Яся", date: "07-12" },
 	{ name: "Мама", date: "01-25" },
-	{ name: "Тест", date: "06-12" },
+	{ name: "Тест", date: "06-13" },
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -92,27 +92,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 		}
 
 		if (messagePromises.length > 0) {
-			// Чекаємо повного виконання запитів до Telegram API
 			await Promise.all(messagePromises);
-			console.log(`✅ Надіслано повідомлень: ${messagePromises.length}`);
+			console.log(`✅ Успішно надіслано повідомлень: ${messagePromises.length}`);
 		} else {
 			console.log("Сьогодні та за тиждень днів народжень немає.");
 		}
 
-		// Повертаємо успішний статус
+		// 1. Спочатку віддаємо успішну відповідь серверу Vercel
 		res.statusCode = 200;
-		res.end(JSON.stringify({ success: true, cron_executed: true }));
+		res.setHeader('Content-Type', 'application/json');
+		res.end(JSON.stringify({ success: true, message: "Checked successfully" }));
 
-		// Фінальний штрих для серверлес: очищення внутрішнього стану бота
-		// (іноді пакети тримають HTTP-з'єднання відкритими "keep-alive", через що Vercel думає, що функція ще працює)
-		if ((bot as any)._requestReg) {
-			(bot as any)._requestReg = null;
-		}
-		return;
+		setTimeout(() => {
+			console.log("🔌 Примусове завершення процесу для запобігання дублів.");
+			process.exit(0);
+		}, 500);
+
+		return; // Виходимо з функції
 
 	} catch (error) {
-		console.error("❌ Помилка під час виконання Cron:", error);
+		console.error("❌ Помилка під час виконання:", error);
 		res.statusCode = 500;
-		return res.end(JSON.stringify({ success: false, error: "Internal Server Error" }));
+		res.setHeader('Content-Type', 'application/json');
+		res.end(JSON.stringify({ success: false, error: "Internal Server Error" }));
+
+		// У разі критичної помилки також гасимо процес, щоб не було циклічних повторів
+		setTimeout(() => { process.exit(1); }, 500);
+		return;
 	}
 }
